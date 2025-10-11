@@ -14,14 +14,26 @@ export const addFileEntryToDb = mutation({
     storageID: v.string(),
     fileName: v.string(),
     createdBy: v.string(),
+    fileUrl:v.string(),
   },
   handler: async (ctx, args) => {
     const result = await ctx.db.insert("pdfFiles", {
       fileID: args.fileID,
       storageID: args.storageID,
       fileName: args.fileName,
-      createdBy: args.createdBy,
+      createdby: args.createdBy,
+      fileUrl:args.fileUrl,
     });
     return { success: true, entry: result };
   },
 });
+
+export const getFileURL=mutation({
+  args:{
+    storageID:v.string(),
+  },
+  handler:async(ctx,args)=>{
+    const url =await ctx.storage.getUrl(args.storageID);
+    return url;
+  }
+})

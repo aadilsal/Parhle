@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,30 +9,67 @@ import {
   DialogClose,
 } from "../../../components/ui/dialog";
 import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Loader2Icon } from "lucide-react";
+import { useUser } from "@clerk/nextjs";
+import { useToast } from "../../../components/ui/toast";
 
 const UploadPdfDialog = ({ children }) => {
   const generateUploadUrl = useMutation(api.fileStorage.generateUploadUrl);
-  const insertFileEntry = useMutation(api.pdfFiles.addFileEntry);
+  const insertFileEntry = useMutation(api.fileStorage.addFileEntryToDb);
+  const getFileURL = useMutation(api.fileStorage.getFileURL);
+
+  const {user}=useUser();
+  
+  const toast = useToast();
+  
   const [file, setFile] = useState();
   const [loading, setLoading] = useState(false);
+  const [fileName, setFileName] = useState("");
+  const [open, setOpen] = useState(false);
+
   const onFileSelect = (event) => {
-    setFile(event.target.files[0]);
+    const f = event.target.files[0];
+    setFile(f);
+    if (f) setFileName(f.name);
   };
   const onUpload = async () => {
+    if (!file) return;
     setLoading(true);
-    const postUrl = await generateUploadUrl();
-    const result = await fetch(postUrl, {
+    try {
+      const postUrl = await generateUploadUrl();
+      const result = await fetch(postUrl, {
         method: "POST",
         headers: { "Content-Type": file?.type },
         body: file,
       });
       const { storageId } = await result.json();
-      console.log({ storageId });
-      const fileID=
+      const fileID = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString();
+
+      const fileUrl = await getFileURL({ storageID: storageId });
+      const resp = await insertFileEntry({
+        fileID: fileID,
+        storageID: storageId,
+        fileName: fileName,
+        fileUrl: fileUrl,
+        createdBy: user?.primaryEmailAddress?.emailAddress,
+      });
+      console.log({ resp });
+      // show success toast and close dialog on success
+      if (resp && resp.success) {
+        toast.push({ title: "Upload complete", description: `${fileName} uploaded`, variant: "success" });
+        setOpen(false);
+      } else {
+        toast.push({ title: "Upload failed", description: "Server did not confirm upload", variant: "error" });
+      }
+    } catch (err) {
+      console.error("Upload failed", err);
+      toast.push({ title: "Upload failed", description: err?.message || String(err), variant: "error" });
+    } finally {
       setLoading(false);
+    }
   };
   const hiddenFileInput = useRef(null);
 
@@ -40,8 +77,21 @@ const UploadPdfDialog = ({ children }) => {
     hiddenFileInput.current?.click?.();
   }
 
+  // Reset form when the dialog is opened (remove previous upload)
+  useEffect(() => {
+    if (open) {
+      setFile(undefined);
+      setFileName("");
+      try {
+        if (hiddenFileInput.current) hiddenFileInput.current.value = "";
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [open]);
+
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <div className="max-w-2xl w-full">
@@ -64,23 +114,28 @@ const UploadPdfDialog = ({ children }) => {
                   ref={hiddenFileInput}
                   type="file"
                   accept="application/pdf"
-                  onChange={onFileSelect}
+                  onChange={(event) => onFileSelect(event)}
                   className="hidden"
                 />
                 <Button onClick={openFilePicker} className="px-4">
                   Choose file
                 </Button>
-                <div className="text-sm text-gray-600">
-                  {file?.name || "No file chosen"}
+                <div className="flex items-center gap-3">
+                  <div className="text-sm text-gray-600">{file?.name || "No file chosen"}</div>
                 </div>
               </div>
             </label>
+
+            <div>
+              <label className="text-sm font-medium">File name</label>
+              <Input value={fileName} onChange={(e) => setFileName(e.target.value)} type="text" className="mt-1" />
+            </div>
 
             <div className="flex justify-end gap-2">
               <DialogClose asChild>
                 <Button variant="outline">Cancel</Button>
               </DialogClose>
-              <Button className="bg-black text-white" onClick={onUpload}>
+              <Button disabled={!file || loading} className="bg-black text-white" onClick={onUpload}>
                 {loading ? <Loader2Icon className="animate-spin" /> : "Upload"}
               </Button>
             </div>
