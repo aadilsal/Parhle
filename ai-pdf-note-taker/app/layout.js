@@ -23,7 +23,13 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        variables: { colorPrimary: "#3b82f6" }
+      }}
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
+    >
     <html lang="en">
       <body
         className={outfit.className}

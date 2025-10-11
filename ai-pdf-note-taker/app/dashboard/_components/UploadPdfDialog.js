@@ -10,7 +10,7 @@ import {
 } from "../../../components/ui/dialog";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
-import { useMutation } from "convex/react";
+import { useMutation, useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Loader2Icon } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
@@ -20,6 +20,7 @@ const UploadPdfDialog = ({ children }) => {
   const generateUploadUrl = useMutation(api.fileStorage.generateUploadUrl);
   const insertFileEntry = useMutation(api.fileStorage.addFileEntryToDb);
   const getFileURL = useMutation(api.fileStorage.getFileURL);
+  const processPdf = useAction(api.myActions.processPdfWithEmbeddings);
 
   const {user}=useUser();
   
@@ -46,7 +47,10 @@ const UploadPdfDialog = ({ children }) => {
         body: file,
       });
       const { storageId } = await result.json();
-      const fileID = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString();
+      // Generate unique fileID - use crypto.randomUUID() if available, otherwise fallback to timestamp + random
+      const fileID = (typeof crypto !== "undefined" && crypto.randomUUID) 
+        ? crypto.randomUUID() 
+        : `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
       const fileUrl = await getFileURL({ storageID: storageId });
       const resp = await insertFileEntry({
@@ -57,10 +61,45 @@ const UploadPdfDialog = ({ children }) => {
         createdBy: user?.primaryEmailAddress?.emailAddress,
       });
       console.log({ resp });
+      
       // show success toast and close dialog on success
       if (resp && resp.success) {
-        toast.push({ title: "Upload complete", description: `${fileName} uploaded`, variant: "success" });
+        toast.push({ title: "Upload complete", description: `${fileName} uploaded successfully`, variant: "success" });
         setOpen(false);
+        
+        // Process PDF in background: extract text, generate embeddings, store in vector DB
+        toast.push({ title: "Processing PDF", description: "Extracting text and generating embeddings...", variant: "info" });
+        
+        // Call Convex action to process PDF asynchronously
+        processPdf({
+          fileUrl: fileUrl,
+          fileID: fileID,
+          fileName: fileName,
+          createdBy: user?.primaryEmailAddress?.emailAddress,
+        })
+          .then((result) => {
+            if (result.success) {
+              toast.push({ 
+                title: "Processing complete", 
+                description: `${result.chunksProcessed} chunks processed, ${result.embeddingsStored} embeddings stored`, 
+                variant: "success" 
+              });
+            } else {
+              toast.push({ 
+                title: "Processing failed", 
+                description: result.error || "Unknown error", 
+                variant: "error" 
+              });
+            }
+          })
+          .catch((error) => {
+            console.error("PDF processing error:", error);
+            toast.push({ 
+              title: "Processing failed", 
+              description: error?.message || String(error), 
+              variant: "error" 
+            });
+          });
       } else {
         toast.push({ title: "Upload failed", description: "Server did not confirm upload", variant: "error" });
       }
