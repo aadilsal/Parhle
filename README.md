@@ -9,7 +9,7 @@ This repository contains two related Next.js services under the same workspace. 
 
 ## 1) AI PDF Note Taker
 
-Location: `ai-pdf-note-taker/`
+Location: `take-notes/`
 
 Summary
 - Upload PDFs, extract text / embeddings, and take searchable, AI-assisted notes.
@@ -30,7 +30,7 @@ How it works (high level)
 
 Run locally (from repo root)
 ```powershell
-cd ai-pdf-note-taker
+cd take-notes
 npm install
 # Start Next dev
 npx next dev
