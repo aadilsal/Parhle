@@ -11,6 +11,8 @@ import {
   Settings,
   LogOut,
   Sparkles,
+  BookOpen,
+  BarChart3,
 } from "lucide-react";
 import {
   Sidebar,
@@ -74,8 +76,12 @@ export function AppSidebar({
     }
   };
 
-  const handleNewNote = () => {
-    createNote();
+  const handleNavigateToQuizzes = () => {
+    router.push("/quiz");
+  };
+
+  const handleNavigateToAnalytics = () => {
+    router.push("/analytics");
   };
 
   const handleCreateCategory = async () => {
@@ -151,6 +157,27 @@ export function AppSidebar({
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <Separator className="my-3" />
+
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={handleNavigateToQuizzes}>
+                  <BookOpen className="h-4 w-4" />
+                  <span className="flex-1">Quizzes</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={handleNavigateToAnalytics}>
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="flex-1">Analytics</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

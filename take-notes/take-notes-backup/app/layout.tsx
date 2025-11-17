@@ -1,4 +1,5 @@
-import type React from "react";
+import React from "react";
+import AppShell from "@/components/dashboard/app-shell";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -65,7 +66,10 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+            {/* AppShell is a client-side app-wide shell that provides TopBar, Sidebar and Footer
+              and will render the page content inside its main area. It also listens for
+              Supabase auth state and shows consistent UI for signed-in users. */}
+            <AppShell>{children}</AppShell>
           <Toaster />
         </ThemeProvider>
       </body>
